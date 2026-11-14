@@ -11,4 +11,11 @@ export const signupSchema = {
     // confirmedPassword:z.string()
 })
 }
+
+export const loginSchema = z.object({
+    iden: z.string().min(1),
+    password: z.string().min(1)
+});
+
+export type logindata = z.infer<typeof loginSchema>;
 export type signupdata = z.infer <typeof signupSchema.body>
