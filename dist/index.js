@@ -7,6 +7,16 @@ import { usermodel } from "./DB/models/user.model.js";
 const app = express();
 app.use(express.json());
 await Dbconnection();
+app.use((req, res, next) => {
+    res.success = (data, message = "success") => {
+        res.status(200).json({
+            success: true,
+            message,
+            data
+        });
+    };
+    next();
+});
 app.use(userRoutes.base, userrouter);
 app.use((err, req, res, next) => {
     res.status(err.status).json({

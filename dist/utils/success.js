@@ -1,7 +1,2 @@
-export const success = ({ res, status, msg, data }) => {
-    return res.status(status).json({
-        data,
-        msg,
-        status
-    });
-};
+// import type { Response } from "express"
+export {};

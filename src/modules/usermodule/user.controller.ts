@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { usersignup } from "./user.service.js";
-import { success } from "../../utils/success.js";
-import { number } from "zod";
 import { auth } from "../../middleware/auth.middleware.js";
+// import { success } from "../../utils/success.js";
+import { usersignup } from "./user.service.js";
 const userrouter = Router()
 export const userRoutes ={
     base:"/users",
@@ -14,8 +13,8 @@ export const userRoutes ={
 
 userrouter.post(userRoutes.signup,async(req,res)=>{
     const {body} =req
-    await usersignup.signup(body)
-    res.json("user created")
+    const data =await usersignup.signup(body)
+   res.success(data, "User created successfully")
 })
 
 
@@ -23,12 +22,13 @@ userrouter.post(userRoutes.signup,async(req,res)=>{
 userrouter.post(userRoutes.login,async(req,res)=>{
     const {body} =req
     let data =await usersignup.login(body)
-    success({res,status:200,data})
+    res.success(data, "login successfull")
+
 })
 
 
 userrouter.get(userRoutes.me,auth,async(req,res)=>{
-    success({res,status:200,data:req.user})
+    res.success(req.user)
 })
 
 export default userrouter

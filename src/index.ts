@@ -8,6 +8,16 @@ import type { IError } from "./utils/error.handle.js"
 const app = express()
 app.use(express.json())
 await Dbconnection()
+app.use((req:Request,res:Response,next:NextFunction)=>{
+    res.success = (data,message="success")=>{
+        res.status(200).json({
+            success:true,
+            message,
+            data
+        })
+    }
+        next()
+})
 app.use(userRoutes.base,userrouter)
 app.use((err:IError,req:Request,res:Response,next:NextFunction)=>{
     res.status(err.status).json({
