@@ -3,3 +3,4 @@ export const mongo_url = process.env.mongo_uri;
 export const redis_url = process.env.redis_uri;
 export const access = process.env.access;
 export const refresh = process.env.refresh;
+export const clientid = process.env.client_id;

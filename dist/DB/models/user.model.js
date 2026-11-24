@@ -1,6 +1,7 @@
 import { model, Schema, Types } from "mongoose";
 import { genderenum, providerenum, roleenum } from "../../modules/usermodule/user.types.js";
 import { decryption, encryption } from "../../utils/security/encryption.js";
+import { createhash } from "../../utils/security/hash.js";
 const userschema = new Schema({
     username: {
         type: String,
@@ -54,6 +55,7 @@ const userschema = new Schema({
         type: Date
     },
     blockedAt: Date,
+    deletedAt: Date,
     phone: {
         type: String,
         set(value) {
@@ -93,5 +95,23 @@ const userschema = new Schema({
             }
         }
     }
+});
+userschema.pre(["save", "deleteOne", "updateOne"], { document: true, query: false }, async function () {
+    if (this.isNew || this.isModified("password")) {
+        if (this.password) {
+            this.password = await createhash(this.password);
+        }
+    }
+});
+userschema.pre(["findOne", "find", "findOneAndUpdate"], function () {
+    const query = this.getQuery();
+    console.log(query);
+    const query1 = {
+        ...query, deletedAt: {
+            $exists: false
+        }
+    };
+    this.setQuery(query1);
+    console.log(this.getQuery());
 });
 export const usermodel = model("users", userschema);

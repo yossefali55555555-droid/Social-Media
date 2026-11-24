@@ -1,3 +1,5 @@
+import type { Types } from "mongoose";
+
 export enum genderenum  {
     male,female
 }
@@ -8,12 +10,13 @@ export enum roleenum {
     user,admin
 }
 export interface Iuser {
+     _id: Types.ObjectId;
     username?:String      
     firstname:String 
     lastname :string
     password? :string
     age? : Number | undefined
-    profileimage:string
+    profileimage?:string
     gender:genderenum
     provider : providerenum
     role:roleenum
@@ -23,4 +26,5 @@ export interface Iuser {
     email:string
     phone?:string | undefined
     fullname:string
+    deletedAt:Date
 }

@@ -19,8 +19,10 @@ app.use((req:Request,res:Response,next:NextFunction)=>{
         next()
 })
 app.use(userRoutes.base,userrouter)
+app.use("/uploads",express.static("./uploads"))
 app.use((err:IError,req:Request,res:Response,next:NextFunction)=>{
-    res.status(err.status).json({
+    const status = err?.status || 500
+    res.status(status).json({
         msg:err.message,
         code:err.status
     })

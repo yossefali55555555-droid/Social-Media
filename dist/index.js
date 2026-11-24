@@ -18,8 +18,10 @@ app.use((req, res, next) => {
     next();
 });
 app.use(userRoutes.base, userrouter);
+app.use("/uploads", express.static("./uploads"));
 app.use((err, req, res, next) => {
-    res.status(err.status).json({
+    const status = err?.status || 500;
+    res.status(status).json({
         msg: err.message,
         code: err.status
     });

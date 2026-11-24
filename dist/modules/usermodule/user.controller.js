@@ -2,12 +2,20 @@ import { Router } from "express";
 import { auth } from "../../middleware/auth.middleware.js";
 // import { success } from "../../utils/success.js";
 import { usersignup } from "./user.service.js";
+import { appendFile } from "fs";
+import { usermodel } from "../../DB/models/user.model.js";
+import { uploadfile } from "../../utils/multer.js";
 const userrouter = Router();
 export const userRoutes = {
     base: "/users",
     signup: "/signup",
     login: "/login",
-    me: "/me"
+    me: "/me",
+    uploadfile: "/upload",
+    refresh: "/refresh",
+    forgetPass: "/forget-pass",
+    resetpass: "/reset-pass",
+    googlelogin: "/google-login"
 };
 userrouter.post(userRoutes.signup, async (req, res) => {
     const { body } = req;
@@ -21,5 +29,55 @@ userrouter.post(userRoutes.login, async (req, res) => {
 });
 userrouter.get(userRoutes.me, auth, async (req, res) => {
     res.success(req.user);
+});
+userrouter.post(userRoutes.uploadfile, auth, uploadfile("/users").single("image"), async (req, res) => {
+    if (!req.file) {
+        throw new Error(" file not found");
+    }
+    const path = req.file.path;
+    if (!req.user) {
+        throw new Error(" not found");
+    }
+    req.user.profileimage = path;
+    await req.user.save();
+    res.success("upload successfull");
+});
+userrouter.get(userRoutes.refresh, async (req, res) => {
+    const data = await usersignup.refresh(req.headers.authorization);
+    res.success(data, "");
+});
+userrouter.post(userRoutes.forgetPass, async (req, res) => {
+    const { email } = req.body;
+    const data = await usersignup.forgetPassSendmail(email);
+    res.success(data, "OTP sent successfully");
+});
+userrouter.post(userRoutes.resetpass, async (req, res) => {
+    const { email, otp, password } = req.body;
+    if (!email || !otp || !password) {
+        throw new Error("All fields are required");
+    }
+    const data = await usersignup.resetpassword(email, otp, password);
+    res.success(data, "Password reset successfully");
+});
+userrouter.post(userRoutes.googlelogin, async (req, res) => {
+    const { token } = req.body;
+    if (!token) {
+        throw new Error("Google token is required");
+    }
+    const data = await usersignup.gmaillogin(token);
+    res.success(data, "Google login successfully");
+});
+//my notes //
+userrouter.get("/hooks", async (req, res) => {
+    // const data = new usermodel({
+    //     fullname:"yosdsef ali",
+    //     email:"yossedf@route.com",
+    //     password:"anddsfsadfa",
+    //     username:"wladwlaahooo",
+    //     phone:"821094d8908349080941823"
+    // })
+    // const user = data.save()
+    const data = await usermodel.findById("6b05edac787328f74d80124c");
+    res.json({ data });
 });
 export default userrouter;

@@ -1,6 +1,7 @@
 import { model, Schema, Types, type HydratedDocument } from "mongoose";
 import { genderenum, providerenum, roleenum, type Iuser } from "../../modules/usermodule/user.types.js";
 import { decryption, encryption } from "../../utils/security/encryption.js";
+import { createhash } from "../../utils/security/hash.js";
 
 
 const userschema = new Schema <Iuser> ({
@@ -57,6 +58,7 @@ const userschema = new Schema <Iuser> ({
         type:Date
     },
     blockedAt:Date,
+    deletedAt:Date,
     phone:{
         type:String,
         set (value:string) {
@@ -101,6 +103,24 @@ const userschema = new Schema <Iuser> ({
             }
         }
     }
+})
+userschema.pre(["save","deleteOne","updateOne"],{document:true,query:false},async function (){
+    if(this.isNew||this.isModified("password")){
+    if(this.password) {
+        this.password = await createhash(this.password)
+    }
+}        
+})
+userschema.pre(["findOne","find","findOneAndUpdate"],function(){
+    const query = this.getQuery()
+    console.log(query)
+    const query1={
+        ...query,deletedAt:{
+            $exists:false
+        }
+    }
+    this.setQuery(query1)
+    console.log(this.getQuery())
 })
 
 export const usermodel = model("users",userschema)

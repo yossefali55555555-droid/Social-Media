@@ -5,12 +5,12 @@ import { usermodel } from "../DB/models/user.model.js"
 import { invalidtoken, loggedout, usernotfound } from "../utils/error.handle.js"
 import { redisconn } from "../DB/redis.connection.js"
 import type { Iuser } from "../modules/usermodule/user.types.js"
-import type { Types } from "mongoose"
+import type { HydratedDocument, Types } from "mongoose"
 import type { NextFunction, Request, Response } from "express"
 
 declare module "express-serve-static-core" {interface Request {
-    user:Iuser,
-    jti:string
+    user?:HydratedDocument <Iuser>,
+    jti?:string
 }
 }
 export const auth = async(req:Request,res:Response,next:NextFunction)=>{

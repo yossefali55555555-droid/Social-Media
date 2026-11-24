@@ -4,13 +4,23 @@ import { redisconn } from "../../DB/redis.connection.js";
 import { random1 } from "../../utils/email/createOTP.js";
 import { emailTemplate } from "../../utils/email/emailTemplate.js";
 import { sendemail } from "../../utils/email/sendemail.js";
-import { AppError, badrequest, invalidcred } from "../../utils/error.handle.js";
-import { attemps, confirmemailkey, resend, session } from "../../utils/redis-services.js";
+import { AppError, badrequest, invalidcred, usernotfound } from "../../utils/error.handle.js";
+import { attemps, attemps2, block2, blockcount2, confirmemailkey, confirmemailkey2, resend, resend2, session, userprefix2 } from "../../utils/redis-services.js";
 import { createhash, ismatch } from "../../utils/security/hash.js";
 import type { logindata, signupdata } from "./user.validation.js";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken"
-import { access, refresh } from "../../config/config.js";
+import {  access, clientid, refresh } from "../../config/config.js";
+import { decodetoken, tokenenum } from "../../middleware/auth.middleware.js";
+import type { Types } from "mongoose";
+import { OAuth2Client } from "google-auth-library";
+import { providerenum } from "./user.types.js";
+const client  = new OAuth2Client()
+export const bcounts =(count:number)=>{
+    const blockmin= [5,15,60,300,1440]
+    const index = Math.min(count,blockmin.length) 
+    return  blockmin[index]! *60
+}
 
 class userservices {
     signup = async(data:signupdata)=>{
@@ -80,6 +90,147 @@ login = async (data:logindata)=>{
         refresh1,access1
     }
     
+}
+  refresh = async (authorization:string)=>{
+    const {user,jti}=await decodetoken(authorization,tokenenum.refresh)
+    const access1 = jwt.sign({
+            _id:user._id,
+            email:user.email
+        },
+    access,{
+        expiresIn:"30min",
+        jwtid:jti
+    })
+    return access1
+}
+forgetPassSendmail = async(email:string)=>{
+    const user = await usermodel.findOne({email})
+    if(!user){
+       return
+    }
+    const isotp= await redisconn.get(confirmemailkey2(user._id))
+    if(isotp){
+        return "you still have otp"
+    }
+     const cannotresend= await redisconn.get(resend2(user._id))
+    ||await redisconn.get(block2(user._id))
+    if(cannotresend){
+        throw new Error("wait shwya")
+    }
+    const attemptsCount =await redisconn.incr(attemps2(user._id))
+        if (attemptsCount >=5){
+            const blocKcount = await redisconn.incr(blockcount2(user._id))
+            await redisconn.set(block2(user._id),0,{
+                expiration:{
+                    type:"EX",
+                    value:bcounts(blocKcount)
+                }
+            })
+            await redisconn.set(attemps2(user._id),0)
+              throw new Error("Too many attempts");
+        }
+           else{
+         await redisconn.set(resend2(user._id),0,{
+            expiration:{
+                type:"EX",
+                value:60
+            }
+         })
+        const otp = random1()
+        await redisconn.set(confirmemailkey2(user._id),await createhash(otp),{
+            expiration:{
+                type:"EX",
+                value:5*60
+            }
+         })
+    await sendemail({to:email,subject:"FORGET PASS OTP",html:emailTemplate({subject:"FORGET PASS OTP",otp})})
+    return {data:{}}
+        }
+}
+resetpassword= async(email:string,otp:string,password:string)=>{
+    const user = await usermodel.findOne({email})
+      if(!user)
+    {
+        throw new usernotfound()
+    }
+     const dbotp = await  redisconn.get(confirmemailkey2(user._id))
+    if(!dbotp){
+        throw new Error("invalid or expired otp")
+    }
+    const isblocked= await redisconn.get(block2(user._id))
+    if(isblocked){
+        const blockedttl= await redisconn.ttl(block2(user._id))
+        throw new Error(`you are restricted until ${Math.ceil(blockedttl/60)}`)
+    }
+    const otpcorrect  = await ismatch(otp,dbotp)
+    if(!otpcorrect){
+        const attemptsCount =await redisconn.incr(attemps2(user._id))
+        if (attemptsCount >=5){
+            const blocKcount = await redisconn.incr(blockcount2(user._id))
+            const durationMinutes = bcounts(blocKcount) / 60;
+            await redisconn.set(block2(user._id),0,{
+                expiration:{
+                    type:"EX",
+                    value:bcounts(blocKcount)
+                }
+            })
+            await redisconn.set(attemps2(user._id),0)
+            throw new Error(`you are restricted until the block ${durationMinutes} minutes remaining`)
+        }
+           throw new Error("Invalid OTP");
+    }
+    else{
+    user.password = await createhash(password)
+    await user.save()
+    const userkeys=await redisconn.keys(`${userprefix2(user._id)}*`)
+    await redisconn.del(userkeys)
+    return {data:{}}    
+}
+}
+gmaillogin=async(token:string)=>{
+    const ticket = await client.verifyIdToken({
+        idToken:token,
+        audience:clientid
+    }) //فكينا توكين كلها 
+    const payload = ticket.getPayload();
+ if (!payload || !payload.email) {
+     throw new Error("Invalid Google Token");
+ }
+
+const { name, email, picture } = payload; //الداتا فعلا الي جوا بتاعى اليوزر
+    let user = await usermodel.findOne({email})
+    if(user){
+    if(user.provider!==providerenum.google){
+        throw new Error("please signup with your provider")
+    }
+}
+
+else {
+    user = await usermodel.create({
+        email,
+        fullname: name ?? email.split("@")[0]!,
+        ...(picture && { profileimage: picture }),
+        provider: providerenum.google
+    });
+}
+
+const access1 = jwt.sign({
+            _id:user._id,
+            email:user.email
+        },
+    access,{
+        expiresIn:"30min"
+    })
+         const refresh1 = jwt.sign({
+            _id:user._id,
+            email:user.email
+        },
+    refresh,{
+        expiresIn:"30day"
+    })
+    return {
+        refresh1,access1
+    }
 }
 }
 
