@@ -15,7 +15,11 @@ export const userRoutes ={
     refresh:"/refresh",
     forgetPass:"/forget-pass",
     resetpass:"/reset-pass",
-    googlelogin: "/google-login"
+    googlelogin: "/google-login",
+    resendconfirmemail:"/resendotp",
+    confirmemail:"/confirm",
+    logout:"/logout1",
+    logoutall:"/logoutall"
 }
 
 
@@ -91,6 +95,61 @@ userrouter.post(userRoutes.googlelogin, async (req, res) => {
     const data = await usersignup.gmaillogin(token);
 
     res.success(data, "Google login successfully");
+});
+
+// Resend 
+userrouter.post(userRoutes.resendconfirmemail, async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        throw new Error("Email is required");
+    }
+
+    const data = await usersignup.resendconfirmemail(email);
+
+    res.success(data, "OTP sent successfully");
+});
+
+// Confirm 
+userrouter.post(userRoutes.confirmemail, async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        throw new Error("Email and OTP are required");
+    }
+
+    const data = await usersignup.confirmed(otp, email);
+
+    res.success(data, "Email confirmed successfully");
+});
+
+// Logout
+userrouter.post(userRoutes.logout, auth, async (req, res) => {
+    const { _id } = req.user!;
+    const { jti } = req;
+
+    if (!_id || !jti) {
+        throw new Error("User ID and JTI are required");
+    }
+
+    const data = await usersignup.logout1(_id, jti);
+
+    res.success(data, "Logged out successfully");
+});
+
+
+
+// Logout all
+userrouter.post(userRoutes.logoutall, auth, async (req, res) => {
+    const { _id } = req.user!;
+
+    if (!_id) {
+        throw new Error("User ID is required");
+    }
+
+    const data = await usersignup.logoutall(_id);
+
+    res.success(data, "Logged out from all devices successfully");
 });
 
 //my notes //
