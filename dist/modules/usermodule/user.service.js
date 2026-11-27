@@ -30,9 +30,9 @@ class userservices {
         }
         const otp = random1();
         await sendemail({ to: data.email, subject: "Verify Your Email", html: emailTemplate({ otp, subject: "Verify Your Email" }) });
-        const hashedpassword = await createhash(data.password);
+        // const hashedpassword = await createhash(data.password)
         const data1 = await usermodel.insertOne({ username: data.username, fullname: data.fullname, email: data.email,
-            password: hashedpassword, phone: data.phone });
+            password: data.password, phone: data.phone });
         await redisconn.set(confirmemailkey(data1._id), await createhash(otp), {
             expiration: {
                 type: "EX",
