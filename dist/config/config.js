@@ -4,3 +4,6 @@ export const redis_url = process.env.redis_uri;
 export const access = process.env.access;
 export const refresh = process.env.refresh;
 export const clientid = process.env.client_id;
+export const publicImage = process.env.IMAGEKIT_PUBLIC_KEY;
+export const privateImage = process.env.IMAGEKIT_PRIVATE_KEY;
+export const urlImage = process.env.IMAGEKIT_URL_ENDPOINT;

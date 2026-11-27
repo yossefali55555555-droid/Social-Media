@@ -5,6 +5,8 @@ import { usersignup } from "./user.service.js";
 import { appendFile } from "fs";
 import { usermodel } from "../../DB/models/user.model.js";
 import { uploadfile } from "../../utils/multer.js";
+import { toFile } from "@imagekit/nodejs";
+import { imagekit } from "../../utils/imageKit/imagekit.js";
 const userrouter = Router();
 export const userRoutes = {
     base: "/users",
@@ -34,17 +36,32 @@ userrouter.post(userRoutes.login, async (req, res) => {
 userrouter.get(userRoutes.me, auth, async (req, res) => {
     res.success(req.user);
 });
-userrouter.post(userRoutes.uploadfile, auth, uploadfile("/users").single("image"), async (req, res) => {
+userrouter.post(userRoutes.uploadfile, auth, uploadfile("/users", 2).single("image"), async (req, res) => {
     if (!req.file) {
-        throw new Error(" file not found");
+        throw new Error("File not found");
     }
-    const path = req.file.path;
     if (!req.user) {
-        throw new Error(" not found");
+        throw new Error("User not found");
     }
-    req.user.profileimage = path;
+    const user_id = req.user._id.toString();
+    // Create user-specific folder
+    const uploaded = await imagekit.files.upload({
+        file: await toFile(req.file.buffer, req.file.originalname),
+        fileName: req.file.originalname,
+        folder: `/users/${user_id}`,
+        useUniqueFileName: true
+    });
+    // Save image information in MongoDB
+    if (!uploaded.url) {
+        throw new Error("Image URL not found");
+    }
+    req.user.profileimage = uploaded.url;
     await req.user.save();
-    res.success("upload successfull");
+    res.success({
+        profileimage: uploaded.url,
+        profileimagepath: uploaded.filePath,
+        profileimageid: uploaded.fileId
+    }, "Image uploaded successfully");
 });
 userrouter.get(userRoutes.refresh, async (req, res) => {
     const data = await usersignup.refresh(req.headers.authorization);
